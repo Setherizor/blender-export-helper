@@ -1,0 +1,30 @@
+variables:
+  ARCHIVE_NAME: Blender Export Helper
+  ENVIRONMENT: Debug
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+      variables:
+        ENVIRONMENT: Release
+        RUNNER: ALPINE
+
+stages:
+  - build
+
+build_job:
+  stage: build
+  tags:
+    - $RUNNER
+  only:
+    - main
+  script:
+    - sed -i "s/<deploy-date>/$(date)/g" *.py
+    - sed -i "s/<deploy-type>/$ENVIRONMENT/g" *.py
+    - mkdir "$ARCHIVE_NAME"
+    - cp *.py "$ARCHIVE_NAME"
+    - zip -r "$ARCHIVE_NAME" "$ARCHIVE_NAME"
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - '$ARCHIVE_NAME.zip'
