@@ -17,7 +17,7 @@ bl_info = {
 }
 
 import bpy
-from bpy.types import Operator, Panel, AddonPreferences, PropertyGroup
+from bpy.types import Panel, PropertyGroup
 from bpy.props import (
     StringProperty,
     IntProperty,
@@ -25,35 +25,8 @@ from bpy.props import (
     PointerProperty,
     EnumProperty,
 )
-from bpy.utils import register_class, unregister_class
 
-from . import animation_exporter
-
-default_opts = {"HIDDEN"}
-
-
-class ExampleAddonPreferences(AddonPreferences):
-    bl_idname = __name__
-
-    filepath: StringProperty(
-        name="Example File Path",
-        subtype="FILE_PATH",
-    )
-    number: IntProperty(
-        name="Example Number",
-        default=4,
-    )
-    boolean: BoolProperty(
-        name="Example Boolean",
-        default=False,
-    )
-
-    def draw(self, context):
-        layout = self.layout
-        layout.label(text="This is a preferences view for our add-on")
-        layout.prop(self, "filepath")
-        layout.prop(self, "number")
-        layout.prop(self, "boolean")
+default_opts = {"ANIMATABLE"}
 
 
 class HelperProperties(PropertyGroup):
@@ -65,6 +38,13 @@ class HelperProperties(PropertyGroup):
         type=bpy.types.Object, name="Control Rig", options=default_opts
     )
     # Export Settings
+    export_path: StringProperty(
+        name="Export Path",
+        default="//",
+        # maxlen=1024,
+        subtype="DIR_PATH",
+        options={"OUTPUT_PATH"},
+    )
     export_method: EnumProperty(
         name="Export Method",
         description="What library to export your animation(s) with",
@@ -78,6 +58,10 @@ class HelperProperties(PropertyGroup):
             ("sourcetools", "Source Tools", "Use Valve's Source Tools Addon"),
         ),
         default="internal",
+        options=default_opts,
+    )
+    export_fix_forward_axis: BoolProperty(
+        name="Fix Forward Axis", default=True, options=default_opts
     )
 
     action_prefix: StringProperty(name="Action Prefix", options=default_opts)
@@ -87,29 +71,8 @@ class HelperProperties(PropertyGroup):
     frame_end: IntProperty(name="Override End Frame", options=default_opts)
 
 
-class OBJECT_OT_addon_prefs_example(Operator):
-    bl_idname = "export_helper.fbx"
-    bl_label = "Add-on Preferences Example"
-    bl_options = {"REGISTER", "UNDO"}
-
-    def execute(self, context):
-        preferences = context.preferences
-        addon_prefs = preferences.addons[__name__].preferences
-
-        info = "Path: %s, Number: %d, Boolean %r" % (
-            addon_prefs.filepath,
-            addon_prefs.number,
-            addon_prefs.boolean,
-        )
-
-        self.report({"INFO"}, info)
-        print(info)
-
-        return {"FINISHED"}
-
-
 class EXPORTER_CONFIG_PT_ExampleAddonPanel(Panel):
-    bl_idname = __name__
+    # bl_idname = __name__
     bl_label = "Awesome Exporter"
     bl_description = "Helpful Exporter"
     bl_space_type = "VIEW_3D"
@@ -123,13 +86,19 @@ class EXPORTER_CONFIG_PT_ExampleAddonPanel(Panel):
         layout = self.layout
         settings = context.scene.export_helper_settings
 
-        layout.operator("export_helper.fbx", text="Export")
-        layout.separator()
-
         col = layout.column(align=True)
+
         col.label(text="Select Armature & Control Rig")
-        col.prop(settings, "armature")
-        col.prop(settings, "control_rig")
+
+        row = layout.row(align=True)
+        rowcol = row.column(align=True)
+        rowcol.label(text="Armature")
+        rowcol.prop(settings, "armature", icon_only=True)
+
+        rowcol = row.column(align=True)
+        rowcol.label(text="Control Rig")
+        rowcol.prop(settings, "control_rig", icon_only=True)
+
         col.separator()
 
         col = layout.column(align=True)
@@ -154,17 +123,35 @@ class EXPORTER_CONFIG_PT_ExampleAddonPanel(Panel):
         rowcol.label(text="Frame End")
         rowcol.prop(settings, "frame_end", icon_only=True)
 
+        col = layout.column(align=True)
         col.label(text="Export Method")
-        col.props_enum(settings, "export_method")
+        col.prop(settings, "export_method", icon_only=False, expand=True)
+
+        col.prop(settings, "export_path", icon_only=False, expand=True)
+
+        col.prop(settings, "export_fix_forward_axis", icon_only=False, expand=True)
+
+        col.separator()
+
+        col.operator("export_helper.fbx", text="Export")
 
 
 # Registration
+from .animation_exporter import ExportHelper
+from bpy.utils import register_class, unregister_class
+
 classes = (
     HelperProperties,
-    ExampleAddonPreferences,
-    OBJECT_OT_addon_prefs_example,
+    ExportHelper,
     EXPORTER_CONFIG_PT_ExampleAddonPanel,
 )
+
+
+if "bpy" in locals():
+    import importlib
+
+    if "exporter" in locals():
+        importlib.reload(animation_exporter)
 
 
 def register():
@@ -184,7 +171,6 @@ def unregister():
 # This allows you to run the script directly from Blender's Text editor
 # to test the add-on without having to install it.
 
-# Bypass this by directling editing in the addon folder and using the following action:
 # F3 -> Reload Scripts
 if __name__ == "__main__":
     register()
