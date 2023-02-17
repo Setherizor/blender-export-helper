@@ -16,26 +16,89 @@ import os
 from math import radians
 from bpy.types import Operator
 
+GLOBAL_EXPORT_PREFIX = "Output_"
+
 
 class ExportHelper(Operator):
     bl_idname = "export_helper.fbx"
     bl_description = "Export animation(s)"
-    bl_label = "Add-on Preferences Example"
+    bl_label = "Export Helper"
     bl_options = {"REGISTER", "UNDO"}
+
+    def log(self, message):
+        self.report({"INFO"}, message)
+        # print(message)
 
     def error(self, message):
         self.report({"WARNING"}, "Something isn't right: " + message)
         raise Exception(message)
 
+    @classmethod
+    def poll(self, context):
+        settings = context.scene.export_helper_settings
+
+        # Execution Checks
+        if settings.armature == None:
+            print("No Armature")
+            return False
+        if settings.control_rig == None:
+            print("No Rig")
+            return False
+        if settings.export_path == None:
+            print("No Export Path")
+            return False
+        if not any(settings.action_collection):
+            print("No Selected Actions")
+            return False
+
+        return True
+
     def execute(self, context):
         settings = context.scene.export_helper_settings
 
-        if settings.armature == None:
-            self.error("No Armature")
-        if settings.control_rig == None:
-            self.error("No Rig")
-        if settings.export_path == None:
-            self.error("No Export Path")
+        # Setup frame start and frame end
+        if settings.frame_start == None or settings.frame_start == 0:
+            settings.frame_start = bpy.context.scene.frame_start
+
+        if settings.frame_end == None or settings.frame_end == 0:
+            settings.frame_end = bpy.context.scene.frame_end
+
+        # Attempt to process each of the control rig's selected actions
+
+        settings = context.scene.export_helper_settings
+        actions = settings.action_collection
+
+        if any(actions):
+            self.log("Export Helper Started")
+            for prop in actions:
+                if prop.checked and not prop.name in (None, ""):
+                    self.process(settings, prop.name)
+            # select first action after exporting
+            # self.select_action(settings, actions[0].name)
+            self.log("Export Helper Finished")
+
+            settings.armature.select_set(False)
+            settings.armature.hide_set(True)
+
+            settings.control_rig.hide_set(False)
+            settings.control_rig.select_set(True)
+
+            return {"FINISHED"}
+        else:
+            return {"CANCELLED"}
+
+    def select_action(self, settings, action_name):
+        # Select the current action from the control rig
+        action = bpy.data.actions.get(action_name)
+        if action == None:
+            self.error("Could not find action: " + action_name)
+
+        settings.control_rig.animation_data.action = action
+
+    def process(self, settings, action):
+        self.log("Start Processing for " + action)
+
+        self.select_action(settings, action)
 
         # cleanup issues that could have come from failed previous executions
         self.cleanup_bake(settings, True)
@@ -52,8 +115,7 @@ class ExportHelper(Operator):
         # cleanup to allow multiple runs without ... wierdness
         self.cleanup_bake(settings, False)
 
-        print("Export Helper Finished")
-        return {"FINISHED"}
+        self.log("Finished Processing for " + action)
 
     def step1(
         self,
@@ -78,10 +140,12 @@ class ExportHelper(Operator):
         self,
         settings,
     ):
-        status = bpy.ops.object.posemode_toggle()
-
-        if not status == {"FINISHED"}:
-            self.error("Step 1: could not get into pose mode")
+        try:
+            status = bpy.ops.object.mode_set(mode="POSE")
+            if not status == {"FINISHED"}:
+                self.error("Step 2: could not get into pose mode")
+        except:
+            self.error("Step 2: something went wrong with posemode")
 
         bpy.ops.pose.select_all(action="SELECT")
 
@@ -95,7 +159,6 @@ class ExportHelper(Operator):
 
         # Decide to manually bake or allow the better fbx addon to take over
         if settings.export_method == "betterfbx":
-            # TODO: better fbx export action renaming
             settings.armature.animation_data.action = control_action
             return
 
@@ -107,7 +170,7 @@ class ExportHelper(Operator):
 
         # Prefix is added globally to prevent action name overlapping
         bake_action_name = (
-            "Output_"
+            GLOBAL_EXPORT_PREFIX
             + settings.action_prefix
             + control_action.name
             + settings.action_suffix
@@ -131,8 +194,8 @@ class ExportHelper(Operator):
 
         # Bake
         bpy.ops.nla.bake(
-            frame_start=bpy.context.scene.frame_start,
-            frame_end=bpy.context.scene.frame_end,
+            frame_start=settings.frame_start,
+            frame_end=settings.frame_end,
             step=1,
             only_selected=True,
             visual_keying=True,
@@ -141,7 +204,7 @@ class ExportHelper(Operator):
             bake_types={"POSE"},
         )
 
-        print("Finished baking animation to armature")
+        self.log("Finished baking animation to armature")
 
     def step4(self, settings, undo=False):
         try:
@@ -194,18 +257,43 @@ class ExportHelper(Operator):
             my_separate_files=False,
         )
 
+        filename = (
+            settings.armature.animation_data.action.name.replace(" ", "") + ".fbx"
+        )
+
+        try:
+            os.remove(GLOBAL_EXPORT_PREFIX + filename)
+        except:
+            pass
+
+        os.rename(filename, GLOBAL_EXPORT_PREFIX + filename)
+
     def source_tools_export(self, settings, file):
         collection = settings.armature.users_collection[0]
 
-        bpy.context.scene.vs.export_path = settings.export_path
-        bpy.context.scene.vs.dmx_encoding = "9"
-        bpy.context.scene.vs.dmx_format = "22_modeldoc"
+        if settings.export_fix_forward_axis == True:
+            bpy.context.scene.vs.export_path = settings.export_path
+            bpy.context.scene.vs.dmx_encoding = "9"
+            bpy.context.scene.vs.dmx_format = "22_modeldoc"
+
+        try:
+            os.remove(file.replace(".fbx", ".dmx"))
+        except:
+            self.log("Something odd happened with dmx file removal")
+
+        try:
+            os.remove(collection.name + ".dmx")
+        except:
+            self.log("Something odd happened with dmx collection removal")
+
         try:
             bpy.ops.export_scene.smd(collection=collection.name, export_scene=False)
-            os.remove(file.replace(".fbx", ".dmx"))
+        except:
+            self.log("Something odd happened with dmx export")
+        try:
             os.rename(collection.name + ".dmx", file.replace(".fbx", ".dmx"))
         except:
-            print("Something odd happened with dmx export")
+            self.log("Something odd happened with dmx export rename")
 
     def step5(
         self,

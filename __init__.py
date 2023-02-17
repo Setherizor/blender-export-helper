@@ -17,25 +17,53 @@ bl_info = {
 }
 
 import bpy
-from bpy.types import Panel, PropertyGroup
+from bpy.types import Panel, PropertyGroup, Operator
 from bpy.props import (
     StringProperty,
     IntProperty,
     BoolProperty,
     PointerProperty,
     EnumProperty,
+    CollectionProperty,
 )
 
+from .animation_exporter import ExportHelper
+from bpy.utils import register_class, unregister_class
+
 default_opts = {"ANIMATABLE"}
+
+
+def has_rig_animdata(settings):
+    return not (
+        settings == None
+        or settings.control_rig == None
+        or settings.control_rig.animation_data == None
+    )
+
+
+def has_bones(self, object):
+    try:
+        return any(object.data.bones)
+    except:
+        return False
+
+
+class PropertyCollection(bpy.types.PropertyGroup):
+    name: StringProperty(name="", default="")
+    checked: BoolProperty(name="", default=True)
 
 
 class HelperProperties(PropertyGroup):
     # Control Settings
     armature: PointerProperty(
-        type=bpy.types.Object, name="Armature", options=default_opts
+        type=bpy.types.Object, name="Armature", options=default_opts, poll=has_bones
     )
     control_rig: PointerProperty(
-        type=bpy.types.Object, name="Control Rig", options=default_opts
+        type=bpy.types.Object,
+        name="Control Rig",
+        options=default_opts,
+        update=lambda self, context: self.update_actions(context, "control_rig_change"),
+        poll=has_bones,
     )
     # Export Settings
     export_path: StringProperty(
@@ -60,6 +88,9 @@ class HelperProperties(PropertyGroup):
         default="internal",
         options=default_opts,
     )
+    export_use_suggestions: BoolProperty(
+        name="Use Suggested Source Tools Settings", default=True, options=default_opts
+    )
     export_fix_forward_axis: BoolProperty(
         name="Fix Forward Axis", default=True, options=default_opts
     )
@@ -70,15 +101,80 @@ class HelperProperties(PropertyGroup):
     frame_start: IntProperty(name="Override Start Frame", options=default_opts)
     frame_end: IntProperty(name="Override End Frame", options=default_opts)
 
+    action_collection: CollectionProperty(type=PropertyCollection, options=default_opts)
 
-class EXPORTER_CONFIG_PT_ExampleAddonPanel(Panel):
-    # bl_idname = __name__
+    def update_actions(self, context, origin):
+        settings = context.scene.export_helper_settings
+
+        if origin == "control_rig_change" and has_rig_animdata(settings):
+            opts = []
+
+            ad = settings.control_rig.animation_data
+
+            # Put in selected action
+            # if ad.action:
+            #     opts.append(ad.action.name)
+            # Put in NLA tracks
+            for t in ad.nla_tracks:
+                for s in t.strips:
+                    opts.append(s.action.name)
+            opts.sort()
+
+            settings.action_collection.clear()
+            for i in opts:
+                item = settings.action_collection.add()
+                item.name = i
+                item.checked = False
+
+
+class ActionTracker(Operator):
+    bl_idname = "export_helper_actions.get"
+    bl_description = "Get Control Rig Actions"
+    bl_label = "Action Tracker"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        HelperProperties.update_actions(self, context, "control_rig_change")
+        return {"FINISHED"}
+
+
+class ActionPanel(Panel):
+    bl_idname = "HELPER_PT_ExportHelperActionPanel"
+    bl_label = "Control Rig Actions For Export"
+    bl_description = "Select Actions for Export"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Export Helper"
+    use_pin = True
+
+    @classmethod
+    def poll(self, context):
+        settings = context.scene.export_helper_settings
+        return has_rig_animdata(settings)
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.export_helper_settings
+
+        for prop in settings.action_collection:
+            layout.prop(prop, "checked", text=prop["name"])
+
+        layout.separator()
+
+        row = layout.row(align=True)
+
+        row.operator(ActionTracker.bl_idname, text="Get Options")
+        row.operator(ExportHelper.bl_idname, text="Export")
+
+
+class ExportHelperPanel(Panel):
+    bl_idname = "HELPER_PT_ExportHelperMainPanel"
     bl_label = "Awesome Exporter"
     bl_description = "Helpful Exporter"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    use_pin = True
     bl_category = "Export Helper"
+    use_pin = True
 
     # How To
     # https://docs.blender.org/api/current/bpy.types.UILayout.html
@@ -92,11 +188,11 @@ class EXPORTER_CONFIG_PT_ExampleAddonPanel(Panel):
 
         row = layout.row(align=True)
         rowcol = row.column(align=True)
-        rowcol.label(text="Armature")
+        rowcol.label(text="Armature Object")
         rowcol.prop(settings, "armature", icon_only=True)
 
         rowcol = row.column(align=True)
-        rowcol.label(text="Control Rig")
+        rowcol.label(text="Control Rig Object")
         rowcol.prop(settings, "control_rig", icon_only=True)
 
         col.separator()
@@ -116,11 +212,11 @@ class EXPORTER_CONFIG_PT_ExampleAddonPanel(Panel):
         row = layout.row(align=True)
 
         rowcol = row.column(align=True)
-        rowcol.label(text="Frame Start")
+        rowcol.label(text="Bake Frame Start")
         rowcol.prop(settings, "frame_start", icon_only=True)
 
         rowcol = row.column(align=True)
-        rowcol.label(text="Frame End")
+        rowcol.label(text="Bake Frame End")
         rowcol.prop(settings, "frame_end", icon_only=True)
 
         col = layout.column(align=True)
@@ -129,29 +225,19 @@ class EXPORTER_CONFIG_PT_ExampleAddonPanel(Panel):
 
         col.prop(settings, "export_path", icon_only=False, expand=True)
 
+        col.prop(settings, "export_use_suggestions", icon_only=False, expand=True)
         col.prop(settings, "export_fix_forward_axis", icon_only=False, expand=True)
-
-        col.separator()
-
-        col.operator("export_helper.fbx", text="Export")
 
 
 # Registration
-from .animation_exporter import ExportHelper
-from bpy.utils import register_class, unregister_class
-
 classes = (
+    PropertyCollection,
     HelperProperties,
+    ActionTracker,
     ExportHelper,
-    EXPORTER_CONFIG_PT_ExampleAddonPanel,
+    ExportHelperPanel,
+    ActionPanel,
 )
-
-
-if "bpy" in locals():
-    import importlib
-
-    if "exporter" in locals():
-        importlib.reload(animation_exporter)
 
 
 def register():
