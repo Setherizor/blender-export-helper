@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 0, 0),
+    "version": (0, 1, 0),
     "blender": (3, 4, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -21,6 +21,7 @@ from bpy.types import Panel, PropertyGroup, Operator
 from bpy.props import (
     StringProperty,
     IntProperty,
+    FloatProperty,
     BoolProperty,
     PointerProperty,
     EnumProperty,
@@ -50,11 +51,28 @@ def has_bones(self, object):
 
 class PropertyCollection(bpy.types.PropertyGroup):
     name: StringProperty(name="", default="")
-    checked: BoolProperty(name="", default=True)
+    checked: BoolProperty(
+        name="",
+        default=True,
+        update=lambda self, context: self.select_action(context),
+    )
+
+    def select_action(self, context):
+        settings = context.scene.export_helper_settings
+
+        if not settings.export_method == "sourcetools":
+            return
+
+        x = 0
+        for prop in settings.action_collection:
+            if prop.checked:
+                x = x + 1
+                if x > 1:
+                    print("Cannon select " + self.name + " because of export method")
+                    self.checked = False
 
 
 class HelperProperties(PropertyGroup):
-    # Control Settings
     armature: PointerProperty(
         type=bpy.types.Object, name="Armature", options=default_opts, poll=has_bones
     )
@@ -66,6 +84,32 @@ class HelperProperties(PropertyGroup):
         poll=has_bones,
     )
     # Export Settings
+    GLOBAL_EXPORT_PREFIX = "Output_"
+    scale: FloatProperty(
+        name="Export Scale",
+        default=1.0,
+        min=0,
+        soft_max=100,
+        subtype="UNSIGNED",
+        options=default_opts,
+    )
+    # taken from better FBX
+    scale_unit: EnumProperty(
+        name="Scale Unit",
+        description="Scale Unit",
+        items=(
+            ("mm", "mm", "mm"),
+            ("dm", "dm", "dm"),
+            ("cm", "cm", "cm"),
+            ("m", "m", "m"),
+            ("km", "km", "km"),
+            ("Inch", "Inch", "Inch"),
+            ("Foot", "Foot", "Foot"),
+            ("Mile", "Mile", "Mile"),
+            ("Yard", "Yard", "Yard"),
+        ),
+        default="m",
+    )
     export_path: StringProperty(
         name="Export Path",
         default="//",
@@ -111,13 +155,12 @@ class HelperProperties(PropertyGroup):
 
             ad = settings.control_rig.animation_data
 
-            # Put in selected action
-            # if ad.action:
-            #     opts.append(ad.action.name)
-            # Put in NLA tracks
-            for t in ad.nla_tracks:
-                for s in t.strips:
-                    opts.append(s.action.name)
+            for a in bpy.data.actions:
+                if a.asset_data == None and not a.name.startswith(
+                    settings.GLOBAL_EXPORT_PREFIX
+                ):
+                    opts.append(a.name)
+
             opts.sort()
 
             settings.action_collection.clear()
@@ -167,8 +210,9 @@ class ActionPanel(Panel):
         row.operator(ExportHelper.bl_idname, text="Export")
 
 
-class ExportHelperPanel(Panel):
-    bl_idname = "HELPER_PT_ExportHelperMainPanel"
+# Handles UI for most of the settings
+class ExportHelperSetupPanel(Panel):
+    bl_idname = "HELPER_PT_ExportHelperSetupPanel"
     bl_label = "Awesome Exporter"
     bl_description = "Helpful Exporter"
     bl_space_type = "VIEW_3D"
@@ -222,11 +266,16 @@ class ExportHelperPanel(Panel):
         col = layout.column(align=True)
         col.label(text="Export Method")
         col.prop(settings, "export_method", icon_only=False, expand=True)
-
         col.prop(settings, "export_path", icon_only=False, expand=True)
 
-        col.prop(settings, "export_use_suggestions", icon_only=False, expand=True)
-        col.prop(settings, "export_fix_forward_axis", icon_only=False, expand=True)
+        col.prop(settings, "scale", icon_only=False, expand=True)
+
+        if settings.export_method == "betterfbx":
+            col.prop(settings, "scale_unit", icon_only=False, expand=False)
+
+        if settings.export_method == "sourcetools":
+            col.prop(settings, "export_use_suggestions", icon_only=False, expand=True)
+            col.prop(settings, "export_fix_forward_axis", icon_only=False, expand=True)
 
 
 # Registration
@@ -235,7 +284,7 @@ classes = (
     HelperProperties,
     ActionTracker,
     ExportHelper,
-    ExportHelperPanel,
+    ExportHelperSetupPanel,
     ActionPanel,
 )
 
