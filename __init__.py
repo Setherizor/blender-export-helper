@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 1, 0),
+    "version": (0, 2, 0),
     "blender": (3, 4, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -80,7 +80,7 @@ class HelperProperties(PropertyGroup):
         type=bpy.types.Object,
         name="Control Rig",
         options=default_opts,
-        update=lambda self, context: self.update_actions(context, "control_rig_change"),
+        update=lambda self, context: self.update_actions(context),
         poll=has_bones,
     )
     # Export Settings
@@ -131,12 +131,19 @@ class HelperProperties(PropertyGroup):
         ),
         default="internal",
         options=default_opts,
+        update=lambda self, context: self.update_export_method(context),
     )
     export_use_suggestions: BoolProperty(
         name="Use Suggested Source Tools Settings", default=True, options=default_opts
     )
     export_fix_forward_axis: BoolProperty(
         name="Fix Forward Axis", default=True, options=default_opts
+    )
+    export_use_asset_actions: BoolProperty(
+        name="Enable Exporting Assets",
+        default=True,
+        options=default_opts,
+        update=lambda self, context: self.update_actions(context),
     )
 
     action_prefix: StringProperty(name="Action Prefix", options=default_opts)
@@ -147,18 +154,24 @@ class HelperProperties(PropertyGroup):
 
     action_collection: CollectionProperty(type=PropertyCollection, options=default_opts)
 
-    def update_actions(self, context, origin):
+    def update_export_method(self, context):
+        settings = context.scene.export_helper_settings
+        # Source tools does one at a time.
+        if settings.export_method == "sourcetools":
+            for prop in settings.action_collection:
+                prop.checked = False
+
+    def update_actions(self, context):
         settings = context.scene.export_helper_settings
 
-        if origin == "control_rig_change" and has_rig_animdata(settings):
+        if has_rig_animdata(settings):
             opts = []
 
             ad = settings.control_rig.animation_data
 
             for a in bpy.data.actions:
-                if a.asset_data == None and not a.name.startswith(
-                    settings.GLOBAL_EXPORT_PREFIX
-                ):
+                get_assets = settings.export_use_asset_actions or a.asset_data == None
+                if get_assets and not a.name.startswith(settings.GLOBAL_EXPORT_PREFIX):
                     opts.append(a.name)
 
             opts.sort()
@@ -177,7 +190,7 @@ class ActionTracker(Operator):
     bl_options = {"REGISTER"}
 
     def execute(self, context):
-        HelperProperties.update_actions(self, context, "control_rig_change")
+        HelperProperties.update_actions(self, context)
         return {"FINISHED"}
 
 
@@ -269,6 +282,7 @@ class ExportHelperSetupPanel(Panel):
         col.prop(settings, "export_path", icon_only=False, expand=True)
 
         col.prop(settings, "scale", icon_only=False, expand=True)
+        col.prop(settings, "export_use_asset_actions")
 
         if settings.export_method == "betterfbx":
             col.prop(settings, "scale_unit", icon_only=False, expand=False)

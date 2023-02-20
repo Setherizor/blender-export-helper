@@ -10,9 +10,6 @@
 
 ## Installation
 
-1. Download the lastest `.zip` [release](https://gitlab.com/setherizor/blender-export-helper/-/releases), DO NOT UNZIP
-2. In Blender click `Edit -> Preferences -> Addons -> Install` and select the downloaded zip.
-3. You may now delete the zip from your downloads.
-
-## Usage
-?
+1. Download the lastest [**BEH-[version].zip** release](https://gitlab.com/setherizor/blender-export-helper/-/releases/permalink/latest), DO NOT UNZIP
+6. In Blender click `Edit -> Preferences -> Addons -> Install` and select the downloaded zip.
+7. You may now delete the zip from your downloads.
