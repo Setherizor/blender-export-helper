@@ -230,14 +230,6 @@ class ExportHelper(Operator):
             self.select(settings.control_rig, False, True)
 
     def native_fbx_export(self, settings, file):
-        print(file)
-        print(file)
-        print(file)
-        try:
-            os.remove(file)
-        except:
-            pass
-
         bpy.ops.export_scene.fbx(
             path_mode="AUTO",
             filepath=file,
@@ -251,10 +243,11 @@ class ExportHelper(Operator):
         )
 
     def better_fbx_export(self, settings, file):
-        try:
-            os.remove(file)
-        except:
-            pass
+        frame_before_start = bpy.context.scene.frame_start
+        frame_before_end = bpy.context.scene.frame_end
+
+        bpy.context.scene.frame_start = settings.frame_start
+        bpy.context.scene.frame_end = settings.frame_end
 
         bpy.ops.better_export.fbx(
             filepath=file,
@@ -263,6 +256,7 @@ class ExportHelper(Operator):
             my_fbx_unit=settings.scale_unit,
             use_selection=True,
             use_animation=True,
+            use_timeline_range=True,
             my_scale=settings.scale,
             use_optimize_for_game_engine=True,
             use_reset_mesh_origin=True,
@@ -274,6 +268,9 @@ class ExportHelper(Operator):
             my_edge_crease_scale=1,
             my_separate_files=False,
         )
+
+        bpy.context.scene.frame_start = frame_before_start
+        bpy.context.scene.frame_end = frame_before_end
 
     def source_export_renamer(self, collection, file):
         settings = bpy.context.scene.export_helper_settings

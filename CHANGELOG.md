@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+- setup betterfbx to use the frame overrides
+
+## 0.3.0
+- better naming for exported files
+- fixed first-run export for betterfbx
+
 ## 0.2.0
 - added optional selection & exporting of actions marked as assets
 
