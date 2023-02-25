@@ -44,6 +44,13 @@ class ExportHelper(Operator):
 
         return True
 
+    def save_actions(self, action_name):
+        action = bpy.data.actions.get(action_name)
+        if action == None:
+            self.error("Could not find action: " + action_name)
+        # Prevent garbage collection from nuking the action
+        action.use_fake_user = True
+
     def execute(self, context):
         settings = context.scene.export_helper_settings
 
@@ -56,23 +63,26 @@ class ExportHelper(Operator):
 
         # Attempt to process each of the control rig's selected actions
 
-        settings = context.scene.export_helper_settings
         actions = settings.action_collection
 
         if any(actions):
             self.log("Export Helper Started with " + str(len(actions)) + " actions")
+            # protect from garbage collection
+            for prop in actions:
+                if prop.checked and not prop.name in (None, ""):
+                    self.save_actions(prop.name)
+            # do the work
             for prop in actions:
                 if prop.checked and not prop.name in (None, ""):
                     self.process(settings, prop.name)
+                    # clean out animation bakes to avoid name collisions
+                    bpy.ops.outliner.orphans_purge(do_recursive=True)
             # select first action after exporting
             # self.select_action(settings, actions[0].name)
             self.log("Export Helper Finished")
 
             self.select(context.scene.export_helper_settings.armature, False, True)
             self.select(context.scene.export_helper_settings.control_rig, True, False)
-
-            # clean out animation bakes to avoid name collisions
-            bpy.ops.outliner.orphans_purge(do_recursive=True)
 
             return {"FINISHED"}
         else:
@@ -83,9 +93,6 @@ class ExportHelper(Operator):
         action = bpy.data.actions.get(action_name)
         if action == None:
             self.error("Could not find action: " + action_name)
-
-        # Prevent garbage collection from nuking the action
-        action.use_fake_user = True
 
         settings.control_rig.animation_data.action = action
 
@@ -223,6 +230,14 @@ class ExportHelper(Operator):
             self.select(settings.control_rig, False, True)
 
     def native_fbx_export(self, settings, file):
+        print(file)
+        print(file)
+        print(file)
+        try:
+            os.remove(file)
+        except:
+            pass
+
         bpy.ops.export_scene.fbx(
             path_mode="AUTO",
             filepath=file,
@@ -236,6 +251,11 @@ class ExportHelper(Operator):
         )
 
     def better_fbx_export(self, settings, file):
+        try:
+            os.remove(file)
+        except:
+            pass
+
         bpy.ops.better_export.fbx(
             filepath=file,
             check_existing=False,
@@ -254,17 +274,6 @@ class ExportHelper(Operator):
             my_edge_crease_scale=1,
             my_separate_files=False,
         )
-
-        filename = (
-            settings.armature.animation_data.action.name.replace(" ", "") + ".fbx"
-        )
-
-        try:
-            os.remove(settings.GLOBAL_EXPORT_PREFIX + filename)
-        except:
-            pass
-
-        os.rename(filename, settings.GLOBAL_EXPORT_PREFIX + filename)
 
     def source_export_renamer(self, collection, file):
         settings = bpy.context.scene.export_helper_settings
@@ -323,7 +332,9 @@ class ExportHelper(Operator):
     ):
         output_dir = settings.export_path
 
-        action_name = settings.armature.animation_data.action.name.replace(" ", "")
+        action_name = settings.armature.animation_data.action.name.replace(
+            " ", ""
+        ).replace(settings.GLOBAL_EXPORT_PREFIX, "")
         fbx_file_name = action_name + ".fbx"
         target_file = bpy.path.abspath(output_dir + fbx_file_name)
 
