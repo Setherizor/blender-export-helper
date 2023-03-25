@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0
+- removed Source Tools support
+
 ## 0.4.0
 - setup betterfbx to use the frame overrides
 

@@ -5,7 +5,6 @@
 
 ## Related Software
 - [**Blender 3.4.1**](https://www.blender.org/download/)
-- [**Source Tools for Blender 3.2.5**](https://developer.valvesoftware.com/wiki/Blender_Source_Tools#Installation)
 - [**Better FBX Importer & Exporter 5.2.9**](https://blendermarket.com/products/better-fbx-importer--exporter)
 
 ## Installation

@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 4, 0),
+    "version": (0, 5, 0),
     "blender": (3, 4, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -58,18 +58,17 @@ class PropertyCollection(bpy.types.PropertyGroup):
     )
 
     def select_action(self, context):
-        settings = context.scene.export_helper_settings
+        pass
+        # settings = context.scene.export_helper_settings
 
-        if not settings.export_method == "sourcetools":
-            return
-
-        x = 0
-        for prop in settings.action_collection:
-            if prop.checked:
-                x = x + 1
-                if x > 1:
-                    print("Cannon select " + self.name + " because of export method")
-                    self.checked = False
+        # Disallow multiple actions selection
+        # x = 0
+        # for prop in settings.action_collection:
+        #     if prop.checked:
+        #         x = x + 1
+        #         if x > 1:
+        #             print("Cannot select " + self.name + " because of export method")
+        #             self.checked = False
 
 
 class HelperProperties(PropertyGroup):
@@ -127,17 +126,10 @@ class HelperProperties(PropertyGroup):
                 "Use Blender's build in FBX exporter",
             ),
             ("betterfbx", "Better FBX Addon", "Use Better FBX Import & Export Addon"),
-            ("sourcetools", "Source Tools", "Use Valve's Source Tools Addon"),
         ),
         default="internal",
         options=default_opts,
         update=lambda self, context: self.update_export_method(context),
-    )
-    export_use_suggestions: BoolProperty(
-        name="Use Suggested Source Tools Settings", default=True, options=default_opts
-    )
-    export_fix_forward_axis: BoolProperty(
-        name="Fix Forward Axis", default=True, options=default_opts
     )
     export_use_asset_actions: BoolProperty(
         name="Enable Exporting Assets",
@@ -155,11 +147,8 @@ class HelperProperties(PropertyGroup):
     action_collection: CollectionProperty(type=PropertyCollection, options=default_opts)
 
     def update_export_method(self, context):
-        settings = context.scene.export_helper_settings
-        # Source tools does one at a time.
-        if settings.export_method == "sourcetools":
-            for prop in settings.action_collection:
-                prop.checked = False
+        pass
+        # settings = context.scene.export_helper_settings
 
     def update_actions(self, context):
         settings = context.scene.export_helper_settings
@@ -286,10 +275,6 @@ class ExportHelperSetupPanel(Panel):
 
         if settings.export_method == "betterfbx":
             col.prop(settings, "scale_unit", icon_only=False, expand=False)
-
-        if settings.export_method == "sourcetools":
-            col.prop(settings, "export_use_suggestions", icon_only=False, expand=True)
-            col.prop(settings, "export_fix_forward_axis", icon_only=False, expand=True)
 
 
 # Registration

@@ -213,21 +213,11 @@ class ExportHelper(Operator):
         self.log("Finished baking animation to armature")
 
     def step4(self, _settings, undo=False):
-        settings = bpy.context.scene.export_helper_settings
+        # settings = bpy.context.scene.export_helper_settings
         try:
             bpy.ops.object.mode_set(mode="OBJECT")
         except:
             pass
-
-        if (
-            settings.export_method == "sourcetools"
-            and settings.export_fix_forward_axis == True
-        ):
-            self.select(settings.control_rig, True, False)
-            angle = 90 if undo else -90
-            angle = radians(angle)
-            bpy.ops.transform.rotate(value=angle, orient_axis="Z")
-            self.select(settings.control_rig, False, True)
 
     def native_fbx_export(self, settings, file):
         bpy.ops.export_scene.fbx(
@@ -272,57 +262,6 @@ class ExportHelper(Operator):
         bpy.context.scene.frame_start = frame_before_start
         bpy.context.scene.frame_end = frame_before_end
 
-    def source_export_renamer(self, collection, file):
-        settings = bpy.context.scene.export_helper_settings
-
-        try:
-            os.rename(
-                collection + ".dmx",
-                os.path.join(settings.export_path, file.replace(".fbx", ".dmx")),
-            )
-        except:
-            print("Something odd happened with dmx export rename")
-
-        try:
-            os.rename(
-                collection + ".smd",
-                os.path.join(settings.export_path, file.replace(".fbx", ".smd")),
-            )
-        except:
-            print("Something odd happened with smd export rename")
-
-        print("Renamed DMX Output")
-
-    def source_tools_export(self, settings, file):
-        collection = settings.armature.users_collection[0]
-
-        if settings.export_use_suggestions:
-            bpy.context.scene.vs.export_path = settings.export_path
-            bpy.context.scene.vs.dmx_encoding = "9"
-            bpy.context.scene.vs.dmx_format = "22_modeldoc"
-
-        try:
-            os.remove(file.replace(".fbx", ".dmx"))
-        except:
-            self.log("Something odd happened with dmx file removal")
-
-        try:
-            os.remove(collection.name + ".dmx")
-        except:
-            self.log("Something odd happened with dmx collection removal")
-
-        filename = collection.name + ""
-
-        try:
-            if not {"FINISHED"} == bpy.ops.export_scene.smd(
-                collection=collection.name, export_scene=False
-            ):
-                self.error("DMX Export encountered an issue")
-        except:
-            self.log("Something odd happened with dmx export")
-
-        self.source_export_renamer(filename, file)
-
     def step5(
         self,
         settings,
@@ -341,8 +280,6 @@ class ExportHelper(Operator):
             self.native_fbx_export(settings, target_file)
         elif method == "betterfbx":
             self.better_fbx_export(settings, target_file)
-        elif method == "sourcetools":
-            self.source_tools_export(settings, target_file)
 
     def cleanup_bake(self, settings):
         arm = bpy.context.scene.export_helper_settings.armature
