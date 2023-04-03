@@ -32,9 +32,6 @@ class ExportHelper(Operator):
         if settings.armature == None:
             print("No Armature")
             return False
-        if settings.control_rig == None:
-            print("No Rig")
-            return False
         if settings.export_path == None:
             print("No Export Path")
             return False
@@ -61,7 +58,7 @@ class ExportHelper(Operator):
         if settings.frame_end == None or settings.frame_end == 0:
             settings.frame_end = bpy.context.scene.frame_end
 
-        # Attempt to process each of the control rig's selected actions
+        # Attempt to process each of the rig's selected actions
 
         actions = settings.action_collection
 
@@ -82,27 +79,34 @@ class ExportHelper(Operator):
             self.log("Export Helper Finished")
 
             self.select(context.scene.export_helper_settings.armature, False, True)
-            self.select(context.scene.export_helper_settings.control_rig, True, False)
+            if context.scene.export_helper_settings.control_rig is not None:
+                self.select(
+                    context.scene.export_helper_settings.control_rig, True, False
+                )
 
             return {"FINISHED"}
         else:
             return {"CANCELLED"}
 
     def select_action(self, settings, action_name):
-        # Select the current action from the control rig
+        # Select the current action from the rig
         action = bpy.data.actions.get(action_name)
         if action == None:
             self.error("Could not find action: " + action_name)
 
-        settings.control_rig.animation_data.action = action
+        if settings.control_rig is None:
+            settings.armature.animation_data.action = action
+        else:
+            settings.control_rig.animation_data.action = action
 
     def process(self, settings, action):
         self.log("Start Processing for " + action)
 
-        self.select_action(settings, action)
-
         # cleanup issues that could have come from failed previous executions
         self.cleanup_bake(settings)
+
+        self.select_action(settings, action)
+
         # select armature
         self.step1(settings)
         # select bones in pose mode
@@ -133,7 +137,8 @@ class ExportHelper(Operator):
 
         bpy.ops.object.select_all(action="DESELECT")
 
-        self.select(settings.control_rig, False, True)
+        if settings.control_rig is not None:
+            self.select(settings.control_rig, False, True)
         self.select(settings.armature, True, False)
         bpy.context.view_layer.objects.active = settings.armature
 
@@ -154,9 +159,15 @@ class ExportHelper(Operator):
         self,
         settings,
     ):
-        control_action = settings.control_rig.animation_data.action
+        action_source = (
+            settings.control_rig
+            if settings.control_rig is not None
+            else settings.armature
+        )
+
+        control_action = action_source.animation_data.action
         if control_action == None:
-            self.error("Step 3: Could not find Control Rig Animation Action")
+            self.error("Step 3: Could not find Rig Animation Action")
 
         # Decide to manually bake or allow the better fbx addon to take over
         if settings.export_method == "betterfbx":
@@ -164,16 +175,16 @@ class ExportHelper(Operator):
             return
 
         # Setup the new action
-        control_action = settings.control_rig.animation_data.action
+        control_action = action_source.animation_data.action
 
         if control_action == None:
-            self.error("Step3: Could not get control rig action")
+            self.error("Step3: Could not get rig action")
 
         # Prefix is added globally to prevent action name overlapping
         bake_action_name = (
             settings.GLOBAL_EXPORT_PREFIX
             + settings.action_prefix
-            + control_action.name
+            + control_action.name.replace("|", " ")
             + settings.action_suffix
         )
 
@@ -293,7 +304,9 @@ class ExportHelper(Operator):
             # Clear out animation bake
             action = arm.animation_data.action
 
-            if not action == None:
+            if action is not None and action.name.startswith(
+                settings.GLOBAL_EXPORT_PREFIX
+            ):
                 bpy.data.actions.remove(action, do_unlink=True)
                 # action.user_clear()
 

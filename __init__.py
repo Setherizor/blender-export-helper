@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 5, 0),
+    "version": (0, 6, 0),
     "blender": (3, 4, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -35,10 +35,15 @@ default_opts = {"ANIMATABLE"}
 
 
 def has_rig_animdata(settings):
-    return not (
-        settings == None
-        or settings.control_rig == None
-        or settings.control_rig.animation_data == None
+    return settings is not None and (
+        (
+            settings.control_rig is not None
+            and settings.control_rig.animation_data is not None
+        )
+        or (
+            settings.armature is not None
+            and settings.armature.animation_data is not None
+        )
     )
 
 
@@ -156,8 +161,6 @@ class HelperProperties(PropertyGroup):
         if has_rig_animdata(settings):
             opts = []
 
-            ad = settings.control_rig.animation_data
-
             for a in bpy.data.actions:
                 get_assets = settings.export_use_asset_actions or a.asset_data == None
                 if get_assets and not a.name.startswith(settings.GLOBAL_EXPORT_PREFIX):
@@ -174,7 +177,7 @@ class HelperProperties(PropertyGroup):
 
 class ActionTracker(Operator):
     bl_idname = "export_helper_actions.get"
-    bl_description = "Get Control Rig Actions"
+    bl_description = "Get Rig Actions"
     bl_label = "Action Tracker"
     bl_options = {"REGISTER"}
 
@@ -185,7 +188,7 @@ class ActionTracker(Operator):
 
 class ActionPanel(Panel):
     bl_idname = "HELPER_PT_ExportHelperActionPanel"
-    bl_label = "Control Rig Actions For Export"
+    bl_label = "Actions For Export"
     bl_description = "Select Actions for Export"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"

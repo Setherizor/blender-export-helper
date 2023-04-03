@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.0
+- added support for exporting directly from armatures without control rig
+
 ## 0.5.0
 - removed Source Tools support
 
