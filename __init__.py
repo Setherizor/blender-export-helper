@@ -17,6 +17,7 @@ bl_info = {
 }
 
 import bpy
+from bpy.app.handlers import persistent, load_post
 from bpy.types import Panel, PropertyGroup, Operator
 from bpy.props import (
     StringProperty,
@@ -37,21 +38,88 @@ default_opts = {"ANIMATABLE"}
 def has_rig_animdata(settings):
     return settings is not None and (
         (
-            settings.control_rig is not None
-            and settings.control_rig.animation_data is not None
+            settings.control_rig() is not None
+            and settings.control_rig().animation_data is not None
         )
         or (
-            settings.armature is not None
-            and settings.armature.animation_data is not None
+            settings.armature() is not None
+            and settings.armature().animation_data is not None
         )
     )
 
 
-def has_bones(self, object):
+def has_bones_and_no_dupes(self, object):
+    settings = bpy.context.scene.export_helper_settings
     try:
-        return any(object.data.bones)
+        hasBones = any(object.data.bones)
+        inArms = object in list(map(lambda x: x.armature, settings.armature_collection))
+        # inControls = object in list(
+        #     map(lambda x: x.control_rig, settings.control_rig_collection)
+        # )
+        # allow 1 rig to 2 armatures
+        return hasBones and not inArms  # and not inControls
     except:
         return False
+
+
+@persistent
+def add_collection_opts(_=None, __=None):
+    try:
+        load_post.remove(add_collection_opts)
+    except:
+        pass
+    bpy.ops.export_helper_collections.get()
+
+
+class ArmatureCollection(bpy.types.PropertyGroup):
+    armature: PointerProperty(
+        type=bpy.types.Object,
+        name="Armature",
+        options=default_opts,
+        poll=has_bones_and_no_dupes,
+        update=lambda self, context: add_collection_opts(),
+    )
+
+
+class ControlRigCollection(bpy.types.PropertyGroup):
+    control_rig: PointerProperty(
+        type=bpy.types.Object,
+        name="Control Rig",
+        options=default_opts,
+        poll=has_bones_and_no_dupes,
+        update=lambda self, context: add_collection_opts(),
+    )
+
+
+class SelectionCollectionTracker(Operator):
+    bl_idname = "export_helper_collections.get"
+    bl_description = "Add Armature & Control Rig Option"
+    bl_label = "Add More Options"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        settings = context.scene.export_helper_settings
+        a = settings.armature_collection
+
+        # Delete spare slots
+        for i, pair in enumerate(
+            list(zip(settings.armature_collection, settings.control_rig_collection))
+        ):
+            if pair[0].armature == None:
+                settings.armature_collection.remove(i)
+                settings.control_rig_collection.remove(i)
+
+        # add back in one
+        count = 0
+        for prop in a:
+            if prop.armature != None:
+                count += 1
+
+        if count == len(a):
+            settings.control_rig_collection.add()
+            settings.armature_collection.add()
+
+        return {"FINISHED"}
 
 
 class PropertyCollection(bpy.types.PropertyGroup):
@@ -77,16 +145,27 @@ class PropertyCollection(bpy.types.PropertyGroup):
 
 
 class HelperProperties(PropertyGroup):
-    armature: PointerProperty(
-        type=bpy.types.Object, name="Armature", options=default_opts, poll=has_bones
+    armature_collection: CollectionProperty(
+        type=ArmatureCollection, options=default_opts
     )
-    control_rig: PointerProperty(
-        type=bpy.types.Object,
-        name="Control Rig",
-        options=default_opts,
-        update=lambda self, context: self.update_actions(context),
-        poll=has_bones,
+    control_rig_collection: CollectionProperty(
+        type=ControlRigCollection, options=default_opts
     )
+
+    def armature(self, idx=0):
+        try:
+            return self.armature_collection[idx].armature
+        except:
+            # print("Problem fetching armature")
+            return None
+
+    def control_rig(self, idx=0):
+        try:
+            return self.control_rig_collection[idx].control_rig
+        except:
+            # print("Problem fetching control rig")
+            return None
+
     # Export Settings
     GLOBAL_EXPORT_PREFIX = "Output_"
     scale: FloatProperty(
@@ -237,13 +316,16 @@ class ExportHelperSetupPanel(Panel):
 
         row = layout.row(align=True)
         rowcol = row.column(align=True)
-        rowcol.label(text="Armature Object")
-        rowcol.prop(settings, "armature", icon_only=True)
+        rowcol.label(text="Armature Object(s)")
+        for prop in settings.armature_collection:
+            rowcol.prop(prop, "armature", icon_only=True)
 
         rowcol = row.column(align=True)
-        rowcol.label(text="Control Rig Object")
-        rowcol.prop(settings, "control_rig", icon_only=True)
+        rowcol.label(text="Control Rig Object(s)")
+        for prop in settings.control_rig_collection:
+            rowcol.prop(prop, "control_rig", icon_only=True)
 
+        col.operator(SelectionCollectionTracker.bl_idname, text="Setup Selections")
         col.separator()
 
         col = layout.column(align=True)
@@ -282,8 +364,11 @@ class ExportHelperSetupPanel(Panel):
 
 # Registration
 classes = (
+    ArmatureCollection,
+    ControlRigCollection,
     PropertyCollection,
     HelperProperties,
+    SelectionCollectionTracker,
     ActionTracker,
     ExportHelper,
     ExportHelperSetupPanel,
@@ -293,16 +378,21 @@ classes = (
 
 def register():
     for cls in classes:
-        register_class(cls)
+        try:
+            register_class(cls)
+        except:
+            print("COULD NOT REGISTER CLASS")
+            print(cls)
 
     bpy.types.Scene.export_helper_settings = PointerProperty(type=HelperProperties)
+    load_post.append(add_collection_opts)  # TODO: this doesn't work...
 
 
 def unregister():
-    del bpy.types.Scene.export_helper_settings
-
     for cls in classes:
         unregister_class(cls)
+
+    del bpy.types.Scene.export_helper_settings
 
 
 # This allows you to run the script directly from Blender's Text editor

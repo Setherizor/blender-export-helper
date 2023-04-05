@@ -3,6 +3,9 @@ import os
 from math import radians
 from bpy.types import Operator
 
+ARMATURE = 0
+CONTROL_RIG = 1
+
 
 class ExportHelper(Operator):
     bl_idname = "export_helper.fbx"
@@ -29,14 +32,14 @@ class ExportHelper(Operator):
         settings = context.scene.export_helper_settings
 
         # Execution Checks
-        if settings.armature == None:
-            print("No Armature")
+        if settings.armature() == None:
+            # print("No Armature")
             return False
         if settings.export_path == None:
-            print("No Export Path")
+            # print("No Export Path")
             return False
         if not any(settings.action_collection):
-            print("No Selected Actions")
+            # print("No Selected Actions")
             return False
 
         return True
@@ -78,56 +81,69 @@ class ExportHelper(Operator):
             # self.select_action(settings, actions[0].name)
             self.log("Export Helper Finished")
 
-            self.select(context.scene.export_helper_settings.armature, False, True)
-            if context.scene.export_helper_settings.control_rig is not None:
+            self.select(context.scene.export_helper_settings.armature(), False, True)
+            if context.scene.export_helper_settings.control_rig() is not None:
                 self.select(
-                    context.scene.export_helper_settings.control_rig, True, False
+                    context.scene.export_helper_settings.control_rig(), True, False
                 )
 
             return {"FINISHED"}
         else:
             return {"CANCELLED"}
 
-    def select_action(self, settings, action_name):
+    def select_action(self, settings, action_name, control_pair):
         # Select the current action from the rig
         action = bpy.data.actions.get(action_name)
         if action == None:
             self.error("Could not find action: " + action_name)
 
-        if settings.control_rig is None:
-            settings.armature.animation_data.action = action
+        if control_pair[CONTROL_RIG] is None:
+            control_pair[ARMATURE].animation_data.action = action
         else:
-            settings.control_rig.animation_data.action = action
+            control_pair[CONTROL_RIG].animation_data.action = action
 
     def process(self, settings, action):
         self.log("Start Processing for " + action)
 
-        # cleanup issues that could have come from failed previous executions
-        self.cleanup_bake(settings)
+        pair_list = list(
+            zip(
+                list(map(lambda x: x.armature, settings.armature_collection)),
+                list(map(lambda x: x.control_rig, settings.control_rig_collection)),
+            )
+        )
 
-        self.select_action(settings, action)
+        pair_list = list(filter(lambda x: x[ARMATURE] is not None, pair_list))
 
-        # select armature
-        self.step1(settings)
-        # select bones in pose mode
-        self.step2(settings)
-        # new action & bake animation
-        self.step3(settings)
+        # some steps must be ran for each rig/armature pair, others run on all at once with selections
+        # data fmt: (armature, control_rig)
+        for pair in pair_list:
+            print("Processing control_pair ")
+            print(pair)
+            # cleanup issues that could have come from failed previous executions
+            self.cleanup_bake(settings, pair)
+            self.select_action(settings, action, pair)
+
+            # select armature
+            self.step1(settings, pair)
+            # select all the bones in pose mode
+            self.step2(settings)
+            # new action & bake animation
+            self.step3(settings, pair)
+
         # object mode and export prep
-        self.step4(settings, False)
+        self.step4()
         # export animation
         self.step5(settings)
         # undo "prep" rotation
-        self.step4(settings, True)
+        self.step4()
+
         # cleanup to allow multiple runs without ... wierdness
-        self.cleanup_bake(settings)
+        for pair in pair_list:
+            self.cleanup_bake(settings, pair)
 
         self.log("Finished Processing for " + action)
 
-    def step1(
-        self,
-        settings,
-    ):
+    def step1(self, settings, control_pair):
         try:
             bpy.ops.object.mode_set(mode="OBJECT")
         except:
@@ -137,10 +153,11 @@ class ExportHelper(Operator):
 
         bpy.ops.object.select_all(action="DESELECT")
 
-        if settings.control_rig is not None:
-            self.select(settings.control_rig, False, True)
-        self.select(settings.armature, True, False)
-        bpy.context.view_layer.objects.active = settings.armature
+        if control_pair[CONTROL_RIG] is not None:
+            self.select(control_pair[CONTROL_RIG], False, True)
+        self.select(control_pair[ARMATURE], True, False)
+
+        bpy.context.view_layer.objects.active = control_pair[ARMATURE]
 
     def step2(
         self,
@@ -155,48 +172,44 @@ class ExportHelper(Operator):
 
         bpy.ops.pose.select_all(action="SELECT")
 
-    def step3(
-        self,
-        settings,
-    ):
+    def step3(self, settings, control_pair):
         action_source = (
-            settings.control_rig
-            if settings.control_rig is not None
-            else settings.armature
+            control_pair[CONTROL_RIG]
+            if control_pair[CONTROL_RIG] is not None
+            else control_pair[ARMATURE]
         )
 
+        # Setup the baked action
         control_action = action_source.animation_data.action
         if control_action == None:
             self.error("Step 3: Could not find Rig Animation Action")
 
         # Decide to manually bake or allow the better fbx addon to take over
         if settings.export_method == "betterfbx":
-            settings.armature.animation_data.action = control_action
+            control_pair[ARMATURE].animation_data.action = control_action
             return
 
-        # Setup the new action
-        control_action = action_source.animation_data.action
-
-        if control_action == None:
-            self.error("Step3: Could not get rig action")
-
         # Prefix is added globally to prevent action name overlapping
+        # same goes for the object we are baking this action to
         bake_action_name = (
             settings.GLOBAL_EXPORT_PREFIX
             + settings.action_prefix
             + control_action.name.replace("|", " ")
             + settings.action_suffix
+            + "_"
+            + action_source.name
         )
 
         bake_action = bpy.data.actions.get(bake_action_name)
+        print("About to bake action: " + bake_action_name)
 
         if bake_action == None:
             area_before = bpy.context.area.type
 
             bpy.context.area.type = "DOPESHEET_EDITOR"
             bpy.context.space_data.mode = "ACTION"
-            settings.armature.animation_data_clear()  # can crash without this
-            settings.armature.animation_data_create()  # can crash without this
+            control_pair[ARMATURE].animation_data_clear()  # can crash without this
+            control_pair[ARMATURE].animation_data_create()  # can crash without this
             bpy.ops.action.new()
 
             new_action = bpy.data.actions.get("Action")
@@ -204,7 +217,7 @@ class ExportHelper(Operator):
             if new_action == None:
                 self.error("Step 3: There was an issue creation an action to bake to")
 
-            settings.armature.animation_data.action = new_action
+            control_pair[ARMATURE].animation_data.action = new_action
             new_action.name = bake_action_name
 
             bpy.context.area.type = area_before
@@ -223,7 +236,7 @@ class ExportHelper(Operator):
 
         self.log("Finished baking animation to armature")
 
-    def step4(self, _settings, undo=False):
+    def step4(self):
         # settings = bpy.context.scene.export_helper_settings
         try:
             bpy.ops.object.mode_set(mode="OBJECT")
@@ -279,22 +292,33 @@ class ExportHelper(Operator):
     ):
         output_dir = settings.export_path
 
-        action_name = settings.armature.animation_data.action.name.replace(
-            " ", ""
-        ).replace(settings.GLOBAL_EXPORT_PREFIX, "")
+        action_name = (
+            settings.armature()
+            .animation_data.action.name.replace(" ", "")
+            .replace(settings.GLOBAL_EXPORT_PREFIX, "")
+        )
         fbx_file_name = action_name + ".fbx"
         target_file = bpy.path.abspath(output_dir + fbx_file_name)
 
         method = settings.export_method
+
+        # have multiple items selected for export process
+        for cr in settings.control_rig_collection:
+            if cr.control_rig is not None:
+                self.select(cr.control_rig, False, True)
+
+        for o in settings.armature_collection:
+            if o.armature is not None:
+                self.select(o.armature, True, False)
 
         if method == "internal":
             self.native_fbx_export(settings, target_file)
         elif method == "betterfbx":
             self.better_fbx_export(settings, target_file)
 
-    def cleanup_bake(self, settings):
-        arm = bpy.context.scene.export_helper_settings.armature
-        rig = bpy.context.scene.export_helper_settings.armature
+    def cleanup_bake(self, settings, control_pair):
+        arm = control_pair[ARMATURE]
+        rig = control_pair[CONTROL_RIG]
 
         arm.animation_data_create()  # can crash without this
 
