@@ -196,8 +196,8 @@ class ExportHelper(Operator):
             + settings.action_prefix
             + control_action.name.replace("|", " ")
             + settings.action_suffix
-            + "_"
-            + action_source.name
+            # + "_"
+            # + action_source.name # allow bakes to be all put into the same action
         )
 
         bake_action = bpy.data.actions.get(bake_action_name)
@@ -221,6 +221,8 @@ class ExportHelper(Operator):
             new_action.name = bake_action_name
 
             bpy.context.area.type = area_before
+        else:
+            control_pair[ARMATURE].animation_data.action = bake_action
 
         # Bake
         bpy.ops.nla.bake(
@@ -234,7 +236,7 @@ class ExportHelper(Operator):
             bake_types={"POSE"},
         )
 
-        self.log("Finished baking animation to armature")
+        self.log("Finished baking animation to action: " + bake_action_name)
 
     def step4(self):
         # settings = bpy.context.scene.export_helper_settings
@@ -244,17 +246,33 @@ class ExportHelper(Operator):
             pass
 
     def native_fbx_export(self, settings, file):
+        # Merge armatures for single take in fbx file
+        bpy.ops.object.duplicate()
+        bpy.ops.object.join()
+
+        tmp = bpy.context.view_layer.objects.active
+        bpy.ops.object.select_all(action="DESELECT")
+        tmp.name = " "
+        bpy.context.view_layer.objects.active = tmp
+        self.select(tmp, True, False)
+
         bpy.ops.export_scene.fbx(
             path_mode="AUTO",
             filepath=file,
             check_existing=False,
             use_selection=True,
+            # use_visible=True,
             global_scale=settings.scale,
             apply_unit_scale=True,
+            object_types={"ARMATURE"},
             add_leaf_bones=False,
             bake_anim=True,
             bake_anim_use_all_bones=True,
+            bake_anim_use_all_actions=False,
+            bake_anim_use_nla_strips=False,
         )
+
+        bpy.ops.object.delete()
 
     def better_fbx_export(self, settings, file):
         frame_before_start = bpy.context.scene.frame_start
@@ -332,7 +350,6 @@ class ExportHelper(Operator):
                 settings.GLOBAL_EXPORT_PREFIX
             ):
                 bpy.data.actions.remove(action, do_unlink=True)
-                # action.user_clear()
 
         # Go back to the rig
         self.select(rig, True, False)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0
+- added support for selecting & exporting multiple armature & control rig pairs at once
+  - native fbx option transparently combines armatures during export
+
 ## 0.6.0
 - added support for exporting directly from armatures without control rig
 
