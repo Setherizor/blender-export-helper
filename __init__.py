@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 7, 1),
+    "version": (0, 7, 2),
     "blender": (3, 4, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -36,16 +36,19 @@ default_opts = {"ANIMATABLE"}
 
 
 def has_rig_animdata(settings):
-    return settings is not None and (
-        (
-            settings.control_rig() is not None
-            and settings.control_rig().animation_data is not None
-        )
-        or (
-            settings.armature() is not None
-            and settings.armature().animation_data is not None
-        )
+    if settings is None:
+        return False
+
+    control_anims = (
+        settings.control_rig() is not None
+        and settings.control_rig().animation_data is not None
     )
+    armature_anims = (
+        settings.armature() is not None
+        and settings.armature().animation_data is not None
+    )
+
+    return control_anims or armature_anims
 
 
 def has_bones_and_no_dupes(self, object):

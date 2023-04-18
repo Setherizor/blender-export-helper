@@ -81,11 +81,17 @@ class ExportHelper(Operator):
             # self.select_action(settings, actions[0].name)
             self.log("Export Helper Finished")
 
-            self.select(context.scene.export_helper_settings.armature(), False, True)
-            if context.scene.export_helper_settings.control_rig() is not None:
-                self.select(
-                    context.scene.export_helper_settings.control_rig(), True, False
-                )
+            # this is probably not needed
+            arm = context.scene.export_helper_settings.armature()
+            rig = context.scene.export_helper_settings.control_rig()
+
+            if rig is not None:
+                self.select(arm, False, True)
+                self.select(rig, True, False)
+                bpy.context.view_layer.objects.active = rig
+            else:
+                self.select(arm, True, False)
+                bpy.context.view_layer.objects.active = arm
 
             return {"FINISHED"}
         else:
@@ -352,6 +358,10 @@ class ExportHelper(Operator):
                 bpy.data.actions.remove(action, do_unlink=True)
 
         # Go back to the rig
-        self.select(rig, True, False)
-        self.select(arm, False, True)
-        bpy.context.view_layer.objects.active = rig
+        if rig is not None:
+            self.select(arm, False, True)
+            self.select(rig, True, False)
+            bpy.context.view_layer.objects.active = rig
+        else:
+            self.select(arm, True, False)
+            bpy.context.view_layer.objects.active = arm
