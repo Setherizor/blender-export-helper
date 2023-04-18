@@ -194,7 +194,7 @@ class ExportHelper(Operator):
         bake_action_name = (
             settings.GLOBAL_EXPORT_PREFIX
             + settings.action_prefix
-            + control_action.name.replace("|", " ")
+            + control_action.name.replace("|", " ").replace("/", "-")
             + settings.action_suffix
             # + "_"
             # + action_source.name # allow bakes to be all put into the same action
