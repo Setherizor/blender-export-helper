@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 7, 3),
+    "version": (0, 7, 4),
     "blender": (3, 4, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -270,7 +270,7 @@ class ActionTracker(Operator):
 
 class ActionPanel(Panel):
     bl_idname = "HELPER_PT_ExportHelperActionPanel"
-    bl_label = "Actions For Export"
+    bl_label = "Action Options"
     bl_description = "Select Actions for Export"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -289,7 +289,23 @@ class ActionPanel(Panel):
         for prop in settings.action_collection:
             layout.prop(prop, "checked", text=prop["name"])
 
-        layout.separator()
+class ExportButton(Panel):
+    bl_idname = "HELPER_PT_ExportHelperExportButton"
+    bl_label = "Export"
+    bl_description = "Export selected actions"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Export Helper"
+    use_pin = True
+
+    @classmethod
+    def poll(self, context):
+        settings = context.scene.export_helper_settings
+        return has_rig_animdata(settings)
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.export_helper_settings
 
         row = layout.row(align=True)
 
@@ -376,6 +392,7 @@ classes = (
     ExportHelper,
     ExportHelperSetupPanel,
     ActionPanel,
+    ExportButton,
 )
 
 
