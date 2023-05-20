@@ -212,13 +212,16 @@ class ExportHelper(Operator):
         if bake_action == None:
             area_before = bpy.context.area.type
 
+            # make sure we don't overwrite an user-authored action named "Action"
+            using_default_action_name = bpy.data.actions.get("Action") != None
+
             bpy.context.area.type = "DOPESHEET_EDITOR"
             bpy.context.space_data.mode = "ACTION"
             control_pair[ARMATURE].animation_data_clear()  # can crash without this
             control_pair[ARMATURE].animation_data_create()  # can crash without this
             bpy.ops.action.new()
 
-            new_action = bpy.data.actions.get("Action")
+            new_action = bpy.data.actions.get("Action") if not using_default_action_name else bpy.data.actions[len(bpy.data.actions) - 1]
 
             if new_action == None:
                 self.error("Step 3: There was an issue creation an action to bake to")

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.3
+- fix for native fbx exporter script "misplacing" an action named the defalt name "Action"
+
 ## 0.7.0
 - added support for selecting & exporting multiple armature & control rig pairs at once
   - native fbx option transparently combines armatures during export
