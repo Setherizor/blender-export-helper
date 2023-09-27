@@ -9,7 +9,7 @@ mkdir -p "$ARCHIVE_NAME"
 # cp "${FILES[@]}" "$ARCHIVE_NAME"
 
 tmp=$(mktemp) # Create a temporary file
-trap "rm -f $tmp; exit 1" 0 1 2 3 13 15
+trap "rm -f $tmp; exit 1" 1 2 3 13 15
 
 for file in "${FILES[@]}"; do
     echo "Processing $file"

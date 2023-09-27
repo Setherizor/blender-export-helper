@@ -54,6 +54,9 @@ class ExportHelper(Operator):
     def execute(self, context):
         settings = context.scene.export_helper_settings
 
+        setting_frame_before_start = settings.frame_start
+        setting_frame_before_end = settings.frame_end
+
         # Setup frame start and frame end
         if settings.frame_start == None or settings.frame_start == 0:
             settings.frame_start = bpy.context.scene.frame_start
@@ -92,9 +95,12 @@ class ExportHelper(Operator):
             else:
                 self.select(arm, True, False)
                 bpy.context.view_layer.objects.active = arm
-
+            settings.frame_start = setting_frame_before_start
+            settings.frame_end = setting_frame_before_end
             return {"FINISHED"}
         else:
+            settings.frame_start = setting_frame_before_start
+            settings.frame_end = setting_frame_before_end
             return {"CANCELLED"}
 
     def select_action(self, settings, action_name, control_pair):

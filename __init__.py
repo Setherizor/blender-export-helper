@@ -7,8 +7,8 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 7, 4),
-    "blender": (3, 4, 1),
+    "version": (0, 7, 5),
+    "blender": (3, 6, 4),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
     "warning": "",

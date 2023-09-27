@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.5
+- fix for better fbx exporter option not using configured scene frames
+- moved export button to own panel
+
 ## 0.7.3
 - fix for native fbx exporter script "misplacing" an action named the defalt name "Action"
 
