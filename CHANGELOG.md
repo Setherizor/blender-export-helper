@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.6
+- fix for rare export cases losing/deleting actions if "Action" action exists
+- fix for armature objects losing their names
+- fix for error cases from view layer excluded collections for armatures
+- removed "Bake Frame" start/end overrides
+
 ## 0.7.5
 - fix for better fbx exporter option not using configured scene frames
 - moved export button to own panel
