@@ -54,16 +54,6 @@ class ExportHelper(Operator):
     def execute(self, context):
         settings = context.scene.export_helper_settings
 
-        setting_frame_before_start = settings.frame_start
-        setting_frame_before_end = settings.frame_end
-
-        # Setup frame start and frame end
-        if settings.frame_start == None or settings.frame_start == 0:
-            settings.frame_start = bpy.context.scene.frame_start
-
-        if settings.frame_end == None or settings.frame_end == 0:
-            settings.frame_end = bpy.context.scene.frame_end
-
         # Attempt to process each of the rig's selected actions
 
         actions = settings.action_collection
@@ -89,18 +79,20 @@ class ExportHelper(Operator):
             rig = context.scene.export_helper_settings.control_rig()
 
             if rig is not None:
-                self.select(arm, False, True)
+                try:
+                    self.select(arm, False, True)
+                except:
+                    pass
                 self.select(rig, True, False)
                 bpy.context.view_layer.objects.active = rig
             else:
-                self.select(arm, True, False)
+                try:
+                    self.select(arm, True, False)
+                except:
+                    pass
                 bpy.context.view_layer.objects.active = arm
-            settings.frame_start = setting_frame_before_start
-            settings.frame_end = setting_frame_before_end
             return {"FINISHED"}
         else:
-            settings.frame_start = setting_frame_before_start
-            settings.frame_end = setting_frame_before_end
             return {"CANCELLED"}
 
     def select_action(self, settings, action_name, control_pair):
@@ -114,6 +106,15 @@ class ExportHelper(Operator):
         else:
             control_pair[CONTROL_RIG].animation_data.action = action
 
+    def recurLayerCollection(self, layerColl, collName):
+        found = None
+        if (layerColl.name == collName):
+            return layerColl
+        for layer in layerColl.children:
+            found = self.recurLayerCollection(layer, collName)
+            if found:
+                return found
+
     def process(self, settings, action):
         self.log("Start Processing for " + action)
 
@@ -126,11 +127,24 @@ class ExportHelper(Operator):
 
         pair_list = list(filter(lambda x: x[ARMATURE] is not None, pair_list))
 
+        excluded_layers= []
+
+        for pair in pair_list:
+            # ensure armature is not excluded from viewlayer
+            layer_collection = self.recurLayerCollection(
+                bpy.context.view_layer.layer_collection,
+                pair[ARMATURE].users_collection[0].name
+            )
+            if layer_collection.exclude == True:
+                exclude_layers.append(layer_collection)
+                layer_collection.exclude = False
+
         # some steps must be ran for each rig/armature pair, others run on all at once with selections
         # data fmt: (armature, control_rig)
         for pair in pair_list:
             print("Processing control_pair ")
             print(pair)
+
             # cleanup issues that could have come from failed previous executions
             self.cleanup_bake(settings, pair)
             self.select_action(settings, action, pair)
@@ -152,6 +166,9 @@ class ExportHelper(Operator):
         # cleanup to allow multiple runs without ... wierdness
         for pair in pair_list:
             self.cleanup_bake(settings, pair)
+        
+        for layer_collection in excluded_layers:
+            layer_collection.exclude = True
 
         self.log("Finished Processing for " + action)
 
@@ -237,8 +254,6 @@ class ExportHelper(Operator):
 
         # Bake
         bpy.ops.nla.bake(
-            frame_start=settings.frame_start,
-            frame_end=settings.frame_end,
             step=1,
             only_selected=True,
             visual_keying=True,
@@ -263,7 +278,6 @@ class ExportHelper(Operator):
 
         tmp = bpy.context.view_layer.objects.active
         bpy.ops.object.select_all(action="DESELECT")
-        tmp.name = " "
         bpy.context.view_layer.objects.active = tmp
         self.select(tmp, True, False)
 
@@ -286,12 +300,6 @@ class ExportHelper(Operator):
         bpy.ops.object.delete()
 
     def better_fbx_export(self, settings, file):
-        frame_before_start = bpy.context.scene.frame_start
-        frame_before_end = bpy.context.scene.frame_end
-
-        bpy.context.scene.frame_start = settings.frame_start
-        bpy.context.scene.frame_end = settings.frame_end
-
         bpy.ops.better_export.fbx(
             filepath=file,
             check_existing=False,
@@ -299,7 +307,7 @@ class ExportHelper(Operator):
             my_fbx_unit=settings.scale_unit,
             use_selection=True,
             use_animation=True,
-            use_timeline_range=True,
+            use_timeline_range=False,
             my_scale=settings.scale,
             use_optimize_for_game_engine=True,
             use_reset_mesh_origin=True,
@@ -311,9 +319,6 @@ class ExportHelper(Operator):
             my_edge_crease_scale=1,
             my_separate_files=False,
         )
-
-        bpy.context.scene.frame_start = frame_before_start
-        bpy.context.scene.frame_end = frame_before_end
 
     def step5(
         self,

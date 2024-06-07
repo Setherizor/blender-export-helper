@@ -228,9 +228,6 @@ class HelperProperties(PropertyGroup):
     action_prefix: StringProperty(name="Action Prefix", options=default_opts)
     action_suffix: StringProperty(name="Action Suffix", options=default_opts)
 
-    frame_start: IntProperty(name="Override Start Frame", options=default_opts)
-    frame_end: IntProperty(name="Override End Frame", options=default_opts)
-
     action_collection: CollectionProperty(type=PropertyCollection, options=default_opts)
 
     def update_export_method(self, context):
@@ -358,16 +355,6 @@ class ExportHelperSetupPanel(Panel):
         rowcol = row.column(align=True)
         rowcol.label(text="Action Suffix")
         rowcol.prop(settings, "action_suffix", icon_only=True)
-
-        row = layout.row(align=True)
-
-        rowcol = row.column(align=True)
-        rowcol.label(text="Bake Frame Start")
-        rowcol.prop(settings, "frame_start", icon_only=True)
-
-        rowcol = row.column(align=True)
-        rowcol.label(text="Bake Frame End")
-        rowcol.prop(settings, "frame_end", icon_only=True)
 
         col = layout.column(align=True)
         col.label(text="Export Method")
