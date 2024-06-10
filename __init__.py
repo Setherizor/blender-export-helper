@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 7, 6),
+    "version": (0, 7, 7),
     "blender": (4, 1, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -179,16 +179,45 @@ class HelperProperties(PropertyGroup):
         subtype="UNSIGNED",
         options=default_opts,
     )
+
+    native_fbx_axis_forward: EnumProperty(
+        name="Native FBX Axis Forward",
+        description="Native FBX Axis Forward",
+        items=(
+            ("X", "X Forward", "X Forward"),
+            ("Y", "Y Forward", "Y Forward"),
+            ("Z", "Z Forward", "Z Forward"),
+            ("-X", "-X Forward", "-X Forward"),
+            ("-Y", "-Y Forward", "-Y Forward"),
+            ("-Z", "-Z Forward", "-Z Forward"),
+        ),
+        default="-Z",
+    )
+
+    native_fbx_axis_up: EnumProperty(
+        name="Native FBX Axis Up",
+        description="Native FBX Axis Up",
+        items=(
+            ("X", "X Up", "X Up"),
+            ("Y", "Y Up", "Y Up"),
+            ("Z", "Z Up", "Z Up"),
+            ("-X", "-X Up", "-X Up"),
+            ("-Y", "-Y Up", "-Y Up"),
+            ("-Z", "-Z Up", "-Z Up"),
+        ),
+        default="Y",
+    )
+
     # taken from better FBX
     scale_unit: EnumProperty(
         name="Scale Unit",
         description="Scale Unit",
         items=(
-            ("mm", "mm", "mm"),
-            ("dm", "dm", "dm"),
-            ("cm", "cm", "cm"),
-            ("m", "m", "m"),
-            ("km", "km", "km"),
+            ("mm", "Millimeter", "Millimeter"),
+            ("dm", "Decimeter", "Decimeter"),
+            ("cm", "Centimeter", "Centimeter"),
+            ("m", "Meter", "Meter"),
+            ("km", "Kilometer", "Kilometer"),
             ("Inch", "Inch", "Inch"),
             ("Foot", "Foot", "Foot"),
             ("Mile", "Mile", "Mile"),
@@ -196,6 +225,81 @@ class HelperProperties(PropertyGroup):
         ),
         default="m",
     )
+
+    better_fbx_axis: EnumProperty(
+        name="Better FBX Axis",
+        description="Better FBX Axis",
+        items=(
+            ("MayaZUp", "MayaZUp", "Compatible with Maya"),
+            ("OpenGL", "OpenGL", "Compatible with OpenGL"),
+            (
+                "Unity",
+                "Unity",
+                "Rotate all contents 180 degrees around the vertical axis, let the character face you in Unity Editor. Warning: This pose is not compatible with the 'Humanoid' animation type, if you want to use the 'Humanoid' animation type in Unity Editor, please use 'MayaZUp' or 'OpenGL'",
+            ),
+            (
+                "Unreal1",
+                "Unreal1",
+                "Rotate all contents -90 degrees around the vertical axis, let the character face you in Unreal Editor",
+            ),
+            (
+                "Unreal2",
+                "Unreal2",
+                "Rotate all contents 90 degrees around the vertical axis, let the character turn his back on you in Unreal Editor",
+            ),
+        ),
+        default="MayaZUp",
+    )
+
+    my_primary_bone_axis: EnumProperty(
+        name="Primary Bone Axis",
+        description="Primary Bone Axis",
+        items=(
+            ("X", "X Axis", "X Axis"),
+            ("Y", "Y Axis", "Y Axis"),
+            ("Z", "Z Axis", "Z Axis"),
+            ("-X", "-X Axis", "-X Axis"),
+            ("-Y", "-Y Axis", "-Y Axis"),
+            ("-Z", "-Z Axis", "-Z Axis"),
+        ),
+        default="Y",
+    )
+
+    my_secondary_bone_axis: EnumProperty(
+        name="Secondary Bone Axis",
+        description="Secondary Bone Axis",
+        items=(
+            ("X", "X Axis", "X"),
+            ("Y", "Y Axis", "Y"),
+            ("Z", "Z Axis", "Z"),
+            ("-X", "-X Axis", "-X"),
+            ("-Y", "-Y Axis", "-Y"),
+            ("-Z", "-Z Axis", "-Z"),
+        ),
+        default="X",
+    )
+
+    only_deform_bones: BoolProperty(
+        name="Only Deform Bones",
+        default=False,
+        options=default_opts,
+        update=lambda self, context: self.update_actions(context),
+    )
+
+    make_rigify_armature: BoolProperty(
+        name="Make Game-Friendly Rigify Armature",
+        default=False,
+        options=default_opts,
+        update=lambda self, context: self.update_actions(context),
+    )
+
+    keep_rigify_root_bone: BoolProperty(
+        name="Keep Rigify Root Bone",
+        default=True,
+        options=default_opts,
+        update=lambda self, context: self.update_actions(context),
+    )
+
     export_path: StringProperty(
         name="Export Path",
         default="//",
@@ -203,6 +307,7 @@ class HelperProperties(PropertyGroup):
         subtype="DIR_PATH",
         options={"OUTPUT_PATH"},
     )
+
     export_method: EnumProperty(
         name="Export Method",
         description="What library to export your animation(s) with",
@@ -218,6 +323,7 @@ class HelperProperties(PropertyGroup):
         options=default_opts,
         update=lambda self, context: self.update_export_method(context),
     )
+
     export_use_asset_actions: BoolProperty(
         name="Enable Exporting Assets",
         default=True,
@@ -286,6 +392,7 @@ class ActionPanel(Panel):
         for prop in settings.action_collection:
             layout.prop(prop, "checked", text=prop["name"])
 
+
 class ExportButton(Panel):
     bl_idname = "HELPER_PT_ExportHelperExportButton"
     bl_label = "Export"
@@ -313,7 +420,7 @@ class ExportButton(Panel):
 # Handles UI for most of the settings
 class ExportHelperSetupPanel(Panel):
     bl_idname = "HELPER_PT_ExportHelperSetupPanel"
-    bl_label = "Awesome Exporter"
+    bl_label = "Export Helper"
     bl_description = "Helpful Exporter"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -328,16 +435,16 @@ class ExportHelperSetupPanel(Panel):
 
         col = layout.column(align=True)
 
-        col.label(text="Select Armature & Control Rig")
+        col.label(text="Select Armature(s) & Control Rig(s)")
 
         row = layout.row(align=True)
         rowcol = row.column(align=True)
-        rowcol.label(text="Armature Object(s)")
+        rowcol.label(text="Armature(s)")
         for prop in settings.armature_collection:
             rowcol.prop(prop, "armature", icon_only=True)
 
         rowcol = row.column(align=True)
-        rowcol.label(text="Control Rig Object(s)")
+        rowcol.label(text="Control Rig(s)")
         for prop in settings.control_rig_collection:
             rowcol.prop(prop, "control_rig", icon_only=True)
 
@@ -357,15 +464,24 @@ class ExportHelperSetupPanel(Panel):
         rowcol.prop(settings, "action_suffix", icon_only=True)
 
         col = layout.column(align=True)
-        col.label(text="Export Method")
+        col.label(text="Export Method:")
         col.prop(settings, "export_method", icon_only=False, expand=True)
         col.prop(settings, "export_path", icon_only=False, expand=True)
 
         col.prop(settings, "scale", icon_only=False, expand=True)
-        col.prop(settings, "export_use_asset_actions")
-
+        if settings.export_method == "internal":
+            col.prop(settings, "native_fbx_axis_forward")
+            col.prop(settings, "native_fbx_axis_up")
         if settings.export_method == "betterfbx":
             col.prop(settings, "scale_unit", icon_only=False, expand=False)
+            col.prop(settings, "better_fbx_axis")
+        col.prop(settings, "my_primary_bone_axis", icon_only=False, expand=False)
+        col.prop(settings, "my_secondary_bone_axis", icon_only=False, expand=False)
+        col.prop(settings, "only_deform_bones")
+        if settings.export_method == "betterfbx":
+            col.prop(settings, "make_rigify_armature")
+            col.prop(settings, "keep_rigify_root_bone")
+        col.prop(settings, "export_use_asset_actions")
 
 
 # Registration

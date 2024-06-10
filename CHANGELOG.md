@@ -1,4 +1,7 @@
 # Changelog
+## 0.7.7
+- exposed more options for native and better fbx exporters
+- fixed some typos
 
 ## 0.7.6
 - fix for rare export cases losing/deleting actions if "Action" action exists

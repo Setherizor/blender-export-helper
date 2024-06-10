@@ -108,7 +108,7 @@ class ExportHelper(Operator):
 
     def recurLayerCollection(self, layerColl, collName):
         found = None
-        if (layerColl.name == collName):
+        if layerColl.name == collName:
             return layerColl
         for layer in layerColl.children:
             found = self.recurLayerCollection(layer, collName)
@@ -127,13 +127,13 @@ class ExportHelper(Operator):
 
         pair_list = list(filter(lambda x: x[ARMATURE] is not None, pair_list))
 
-        excluded_layers= []
+        excluded_layers = []
 
         for pair in pair_list:
             # ensure armature is not excluded from viewlayer
             layer_collection = self.recurLayerCollection(
                 bpy.context.view_layer.layer_collection,
-                pair[ARMATURE].users_collection[0].name
+                pair[ARMATURE].users_collection[0].name,
             )
             if layer_collection.exclude == True:
                 exclude_layers.append(layer_collection)
@@ -166,7 +166,7 @@ class ExportHelper(Operator):
         # cleanup to allow multiple runs without ... wierdness
         for pair in pair_list:
             self.cleanup_bake(settings, pair)
-        
+
         for layer_collection in excluded_layers:
             layer_collection.exclude = True
 
@@ -288,8 +288,13 @@ class ExportHelper(Operator):
             use_selection=True,
             # use_visible=True,
             global_scale=settings.scale,
+            axis_forward=settings.native_fbx_axis_forward,
+            axis_up=settings.native_fbx_axis_up,
+            primary_bone_axis=settings.my_primary_bone_axis,
+            secondary_bone_axis=settings.my_secondary_bone_axis,
             apply_unit_scale=True,
             object_types={"ARMATURE"},
+            use_armature_deform_only=settings.only_deform_bones,
             add_leaf_bones=False,
             bake_anim=True,
             bake_anim_use_all_bones=True,
@@ -305,10 +310,16 @@ class ExportHelper(Operator):
             check_existing=False,
             my_file_type=".fbx",
             my_fbx_unit=settings.scale_unit,
+            my_fbx_axis=settings.better_fbx_axis,
             use_selection=True,
             use_animation=True,
             use_timeline_range=False,
             my_scale=settings.scale,
+            primary_bone_axis=settings.my_primary_bone_axis,
+            secondary_bone_axis=settings.my_secondary_bone_axis,
+            use_only_deform_bones=settings.only_deform_bones,
+            use_rigify_armature=settings.make_rigify_armature,
+            use_rigify_root_bone=settings.keep_rigify_root_bone,
             use_optimize_for_game_engine=True,
             use_reset_mesh_origin=True,
             use_reset_mesh_rotation=True,
