@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 7, 8),
+    "version": (0, 7, 9),
     "blender": (4, 2, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
@@ -315,11 +315,10 @@ class HelperProperties(PropertyGroup):
                 "Internal FBX Exporter",
                 "Use Blender's build in FBX exporter",
             ),
-            ("betterfbx", "Better FBX Addon", "Use Better FBX Import & Export Addon"),
+            ("betterfbx", "Better FBX Addon", "Use Better FBX Import & Export Addon") if "better_fbx" in bpy.context.preferences.addons.keys() else None,
         ),
         default="internal",
         options=default_opts,
-        update=lambda self, context: self.update_export_method(context),
     )
 
     export_use_asset_actions: BoolProperty(
@@ -332,10 +331,6 @@ class HelperProperties(PropertyGroup):
     action_suffix: StringProperty(name="Action Suffix", options=default_opts)
 
     action_collection: CollectionProperty(type=PropertyCollection, options=default_opts)
-
-    def update_export_method(self, context):
-        pass
-        # settings = context.scene.export_helper_settings
 
     def update_actions(self, context):
         settings = context.scene.export_helper_settings

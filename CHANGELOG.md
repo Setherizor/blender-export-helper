@@ -1,4 +1,7 @@
 # Changelog
+## 0.7.9
+- hide better_fbx if addon not available
+
 ## 0.7.8
 - fix action options being reset on settings changes
 - return to previously selected animation after export
