@@ -1,4 +1,9 @@
 # Changelog
+## 0.7.8
+- fix action options being reset on settings changes
+- return to previously selected animation after export
+- add animation framerate overrides (applies during export)
+
 ## 0.7.7
 - exposed more options for native and better fbx exporters
 - fixed some typos

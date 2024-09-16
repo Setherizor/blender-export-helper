@@ -54,6 +54,15 @@ class ExportHelper(Operator):
     def execute(self, context):
         settings = context.scene.export_helper_settings
 
+        # Save currently selected action
+        ob = bpy.context.object
+        bkp_action_name = (ob.animation_data.action.name
+            if ob.animation_data is not None and
+            ob.animation_data.action is not None
+            else "")
+        # Save current scene framerate
+        bkp_framerate = bpy.context.scene.render.fps
+
         # Attempt to process each of the rig's selected actions
 
         actions = settings.action_collection
@@ -67,11 +76,16 @@ class ExportHelper(Operator):
             # do the work
             for prop in actions:
                 if prop.checked and not prop.name in (None, ""):
+                    if prop.fps != 0:
+                        print("overriding FPS")
+                        bpy.context.scene.render.fps = prop.fps
+                    else:
+                        # reset framerate
+                        bpy.context.scene.render.fps = bkp_framerate
+
                     self.process(settings, prop.name)
                     # clean out animation bakes to avoid name collisions
                     bpy.ops.outliner.orphans_purge(do_recursive=True)
-            # select first action after exporting
-            # self.select_action(settings, actions[0].name)
             self.log("Export Helper Finished")
 
             # this is probably not needed
@@ -91,6 +105,11 @@ class ExportHelper(Operator):
                 except:
                     pass
                 bpy.context.view_layer.objects.active = arm
+            
+            # select previously selected action after exporting
+            if bkp_action_name:
+                self.select_action(settings, bkp_action_name, [arm, rig])
+
             return {"FINISHED"}
         else:
             return {"CANCELLED"}

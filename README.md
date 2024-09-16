@@ -4,7 +4,7 @@
 [![pipeline status](https://gitlab.com/setherizor/blender-export-helper/badges/main/pipeline.svg)](https://gitlab.com/setherizor/blender-export-helper/-/commits/main)
 
 ## Related Software
-- [**Blender 4.1**](https://www.blender.org/download/)
+- [**Blender 4.2.1**](https://www.blender.org/download/)
 - [**Better FBX Importer & Exporter 5.4.0**](https://blendermarket.com/products/better-fbx-importer--exporter)
 
 ## Installation

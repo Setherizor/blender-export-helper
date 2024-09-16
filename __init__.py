@@ -7,8 +7,8 @@
 bl_info = {
     "name": "Blender Export Helper",
     "author": "setherizor",
-    "version": (0, 7, 7),
-    "blender": (4, 1, 1),
+    "version": (0, 7, 8),
+    "blender": (4, 2, 1),
     "location": "File > Import-Export",
     "description": "Simplify exporting your work with popular tools",
     "warning": "",
@@ -132,6 +132,7 @@ class PropertyCollection(bpy.types.PropertyGroup):
         default=True,
         update=lambda self, context: self.select_action(context),
     )
+    fps: IntProperty(name="", default=0)
 
     def select_action(self, context):
         pass
@@ -283,21 +284,18 @@ class HelperProperties(PropertyGroup):
         name="Only Deform Bones",
         default=False,
         options=default_opts,
-        update=lambda self, context: self.update_actions(context),
     )
 
     make_rigify_armature: BoolProperty(
         name="Make Game-Friendly Rigify Armature",
         default=False,
         options=default_opts,
-        update=lambda self, context: self.update_actions(context),
     )
 
     keep_rigify_root_bone: BoolProperty(
         name="Keep Rigify Root Bone",
         default=True,
         options=default_opts,
-        update=lambda self, context: self.update_actions(context),
     )
 
     export_path: StringProperty(
@@ -328,7 +326,6 @@ class HelperProperties(PropertyGroup):
         name="Enable Exporting Assets",
         default=True,
         options=default_opts,
-        update=lambda self, context: self.update_actions(context),
     )
 
     action_prefix: StringProperty(name="Action Prefix", options=default_opts)
@@ -358,6 +355,7 @@ class HelperProperties(PropertyGroup):
                 item = settings.action_collection.add()
                 item.name = i
                 item.checked = False
+                item.fps = 0
 
 
 class ActionTracker(Operator):
@@ -373,7 +371,7 @@ class ActionTracker(Operator):
 
 class ActionPanel(Panel):
     bl_idname = "HELPER_PT_ExportHelperActionPanel"
-    bl_label = "Action Options"
+    bl_label = "Action Options (& FPS Override)"
     bl_description = "Select Actions for Export"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -390,7 +388,11 @@ class ActionPanel(Panel):
         settings = context.scene.export_helper_settings
 
         for prop in settings.action_collection:
-            layout.prop(prop, "checked", text=prop["name"])
+            row = layout.row()
+            row.prop(prop, "checked", text=prop["name"])
+            c = row.column(align=True)
+            c.alignment = "RIGHT"
+            c.prop(prop, "fps", expand=False)
 
 
 class ExportButton(Panel):
