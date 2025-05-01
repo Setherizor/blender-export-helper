@@ -60,6 +60,11 @@ class ExportHelper(Operator):
             if ob.animation_data is not None and
             ob.animation_data.action is not None
             else "")
+
+        if bkp_action_name and bkp_action_name is "Action":
+            ob.animation_data.action.name = bkp_action_name + "-Saved"
+            bkp_action_name += "-Saved"
+
         # Save current scene framerate
         bkp_framerate = bpy.context.scene.render.fps
 
@@ -122,8 +127,10 @@ class ExportHelper(Operator):
 
         if control_pair[CONTROL_RIG] is None:
             control_pair[ARMATURE].animation_data.action = action
+            control_pair[ARMATURE].animation_data.action_slot = action.slots[0]
         else:
             control_pair[CONTROL_RIG].animation_data.action = action
+            control_pair[CONTROL_RIG].animation_data.action_slot = action.slots[0]
 
     def recurLayerCollection(self, layerColl, collName):
         found = None
@@ -235,6 +242,7 @@ class ExportHelper(Operator):
         # Decide to manually bake or allow the better fbx addon to take over
         if settings.export_method == "betterfbx":
             control_pair[ARMATURE].animation_data.action = control_action
+            control_pair[ARMATURE].animation_data.action_slot = control_action.slots[0]
             return
 
         # Prefix is added globally to prevent action name overlapping
@@ -270,6 +278,7 @@ class ExportHelper(Operator):
             bpy.context.area.type = area_before
         else:
             control_pair[ARMATURE].animation_data.action = bake_action
+            control_pair[ARMATURE].animation_data.action_slot = bake_action.slots[0]
 
         # Bake
         bpy.ops.nla.bake(
@@ -347,7 +356,6 @@ class ExportHelper(Operator):
             use_edge_crease=True,
             my_edge_smoothing="FBXSDK",
             my_edge_crease_scale=1,
-            my_separate_files=False,
         )
 
     def step5(

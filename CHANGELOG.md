@@ -1,4 +1,7 @@
 # Changelog
+## 0.8.0
+- compatibility fixed for new blender version & plugin updates
+
 ## 0.7.9
 - hide better_fbx if addon not available
 
