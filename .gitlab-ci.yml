@@ -57,5 +57,5 @@ release_job:
     ref: '$CI_COMMIT_SHA'
     assets:
       links:
-        - name: 'BEH-$TAG.zip'
+        - name: 'BEH.zip'
           url: 'https://gitlab.com/setherizor/blender-export-helper/-/jobs/$JOB_ID/artifacts/download'

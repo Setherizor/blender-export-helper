@@ -4,12 +4,12 @@
 [![pipeline status](https://gitlab.com/setherizor/blender-export-helper/badges/main/pipeline.svg)](https://gitlab.com/setherizor/blender-export-helper/-/commits/main)
 
 ## Related Software
-- [**Blender 4.4.3**](https://www.blender.org/download/)
-- [**Better FBX Importer & Exporter 6.0.6**](https://superhivemarket.com/products/better-fbx-importer--exporter)
+- [**Blender 5.0.1**](https://www.blender.org/download/)
+- [**Better FBX Importer & Exporter 6.3.3**](https://superhivemarket.com/products/better-fbx-importer--exporter)
 
 ## Installation
 
-1. Download the lastest [**BEH-[version].zip** release](https://gitlab.com/setherizor/blender-export-helper/-/releases/permalink/latest), DO NOT UNZIP
+1. Download the lastest [**BEH.zip** release](https://gitlab.com/setherizor/blender-export-helper/-/releases/permalink/latest), DO NOT UNZIP
 6. In Blender click `Edit -> Preferences -> Addons -> Install` and select the downloaded zip.
 7. You may now delete the zip from your downloads.
 

@@ -1,4 +1,7 @@
 # Changelog
+## 0.8.3
+- bugfixes for blender 5 addon install
+
 ## 0.8.0
 - compatibility fixed for new blender version & plugin updates
 
