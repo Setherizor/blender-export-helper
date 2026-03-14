@@ -1,4 +1,8 @@
 # Changelog
+
+## 0.8.6
+- remove .gitlab-ci.yml and _header.md files
+
 ## 0.8.5 
 - remove build.sh
 
