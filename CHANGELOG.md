@@ -1,4 +1,10 @@
 # Changelog
+## 0.8.5 
+- remove build.sh
+
+## 0.8.4
+- animations are no longer simplified with native fbx exporter
+
 ## 0.8.3
 - bugfixes for blender 5 addon install
 
