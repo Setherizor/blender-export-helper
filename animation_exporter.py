@@ -328,6 +328,7 @@ class ExportHelper(Operator):
             bake_anim_use_all_bones=True,
             bake_anim_use_all_actions=False,
             bake_anim_use_nla_strips=False,
+            bake_anim_simplify_factor=0,
         )
 
         bpy.ops.object.delete()
