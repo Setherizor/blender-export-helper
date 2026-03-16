@@ -1,24 +1,17 @@
 # Blender Export Helper
 
-[![Latest Release](https://gitlab.com/setherizor/blender-export-helper/-/badges/release.svg)](https://gitlab.com/setherizor/blender-export-helper/-/releases)
-[![pipeline status](https://gitlab.com/setherizor/blender-export-helper/badges/main/pipeline.svg)](https://gitlab.com/setherizor/blender-export-helper/-/commits/main)
-
 ## Related Software
-- [**Blender 5.0.1**](https://www.blender.org/download/)
-- [**Better FBX Importer & Exporter 6.3.3**](https://superhivemarket.com/products/better-fbx-importer--exporter)
+- [**Blender**](https://www.blender.org/download/)
+- [**Better FBX Importer & Exporter**](https://superhivemarket.com/products/better-fbx-importer--exporter)
 
 ## Installation
 
-1. Download the lastest [**BEH.zip** release](https://gitlab.com/setherizor/blender-export-helper/-/releases/permalink/latest), DO NOT UNZIP
-6. In Blender click `Edit -> Preferences -> Addons -> Install` and select the downloaded zip.
-7. You may now delete the zip from your downloads.
+1. Download the latest Blender version and Better FBX Importer & Exporter (if you have access to it, it's optional).
+2. Download the [**main branch**](https://github.com/Setherizor/blender-export-helper/archive/refs/heads/main.zip) of this addon.
+3. In Blender go to "Edit --> Preferences --> Add-ons --> Install from Disk..." and select the .zip file of the downloaded addon.
+4. The addon should show up now in the N-Panel of the viewport.
+5. For some instructions follow this [**link**](https://github.com/Ali3nSystems/Ecodelia-Tools-for-Facepunch-Assets/blob/main/Documentation/Export%20Helper%20Addon/Setup.txt). More detailed instructions will be made available at a later date and for other types of control rigs like rigify.
 
-## Development Guide
-1. clone this repo  to `\AppData\Roaming\Blender Foundation\Blender\<version>\scripts\addons`
-2. restart blender & enable this addon in blender's addon settings
-3. open a project in blender as usual, make changes/tweaks to the python, use `F3` then `Reload Scripts` to apply changes within blender (sometimes to see changes you have to close and open blender)
+## Support
 
-### Tips
-> Use blender's scripting view, code windows, & [api docs](https://docs.blender.org/api/current/index.html) to learn more about what is possible
-
-> Use the blender option "Toggle System Console" (press F3, then type) to get more detailed output from the addon
+For issues, feature requests, or contributions, please refer to the project's issue tracker or contact [eeight3d](https://discord.com/users/1187194205580312726) on discord.
