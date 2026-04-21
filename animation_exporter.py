@@ -162,7 +162,7 @@ class ExportHelper(Operator):
                 pair[ARMATURE].users_collection[0].name,
             )
             if layer_collection.exclude == True:
-                exclude_layers.append(layer_collection)
+                excluded_layers.append(layer_collection)
                 layer_collection.exclude = False
 
         # some steps must be ran for each rig/armature pair, others run on all at once with selections
